@@ -5,18 +5,21 @@ import pandas as pd
 import numpy as np
 from PIL import Image
 from torchvision.datasets.folder import default_loader
-from torchvision.datasets import CIFAR10
+
 
 class CustomDataset(Dataset):
-    def __init__(self, root, train=True, transform=None, download=True):
-        # Load CIFAR-10 data using torchvision's CIFAR10 class
-        self.cifar_data = CIFAR10(root=root, train=train, download=download, transform=transform)
+    def __init__(self, root, csv_path, targets, transform=None):
+        self.root_path = root
+        self.csv_file = csv_path
+        self.transforms = transform
+        self.targets = targets
 
-        self.data = self.cifar_data.data
-        self.labels = self.cifar_data.targets
+        # Load the path to img and corresponding labels from csv. 
+        self.label_data = pd.read_csv(csv_path)
+        self.path_to_images = self.label_data['path_to_image'].values
+        self.labels = self.label_data[targets].replace({-1:0}).fillna(0).values
 
-        self.classes = self.cifar_data.classes
-        self.binary = len(self.classes) == 2
+        self.binary = len(self.targets) == 1
         
         # Calculate weights for each class
         self.class_counts = np.unique(self.labels, return_counts=True)[1]
@@ -24,10 +27,16 @@ class CustomDataset(Dataset):
 
     def __len__(self):
         # Return the size of the dataset
-        return len(self.cifar_data)
+        return len(self.label_data)
 
     def __getitem__(self, idx):
-        # Get the data item (image and label) at the specified index
-        image, label = self.cifar_data[idx]
-        return image, label
+        path_to_image = os.path.join(self.root_path, self.path_to_images[idx])
+
+        # Either jpg or png
+        image = default_loader(path_to_image.replace(".jpg", ".png"))
+        
+        if self.transforms is not None:
+            image = self.transforms(image)
+
+        return image, self.labels[idx]
 

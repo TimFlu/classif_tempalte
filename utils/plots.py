@@ -12,6 +12,9 @@ def plot_confidence_histogram(y_true, y_pred, save_path, num_bins=10,):
     # Calculate accuracy
     y_pred = np.array(y_pred)
     y_true = np.array(y_true)
+    if len(y_pred.shape) == 1:
+        y_pred = y_pred.reshape(-1, 1)
+        y_true = y_true.reshape(-1, 1)
     y_pred_class = np.argmax(y_pred, axis=1)
     accuracy = np.mean(y_true == y_pred_class)
     mean_confidence = np.mean(np.max(y_pred, axis=1))
@@ -31,6 +34,10 @@ def plot_reliability_diagram(y_true, y_pred, save_path, num_bins=10):
     # Calculate accuracy
     y_pred = np.array(y_pred)
     y_true = np.array(y_true)
+    if len(y_pred.shape) == 1:
+        y_pred = y_pred.reshape(-1, 1)
+        y_true = y_true.reshape(-1, 1)
+
     y_pred_class = np.argmax(y_pred, axis=1)
     y_pred_confidence = np.max(y_pred, axis=1)
     

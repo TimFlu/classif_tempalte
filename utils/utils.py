@@ -47,6 +47,9 @@ def metric_evaluation(labels, pred, binary=True, num_classes=None):
 def expected_calibration_error(labels, y_pred, num_bins=10):
     y_pred = np.array(y_pred)
     labels = np.array(labels)
+    if len(y_pred.shape) == 1:
+        y_pred = y_pred.reshape(-1, 1)
+        labels = labels.reshape(-1, 1)
     y_pred_class = np.argmax(y_pred, axis=1)
     y_pred_confidence = np.max(y_pred, axis=1)
 

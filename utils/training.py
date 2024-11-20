@@ -1,6 +1,6 @@
 import sys
 #TODO: Change the path to the working directory
-sys.path.append('/storage/homefs/tf24s166/code/cifar10/') 
+sys.path.append('/storage/homefs/tf24s166/code/chestxpert/') 
 from utils.datasets import CustomDataset
 from utils.log import comet_log_metrics, comet_log_figure
 from utils.plots import plot_confidence_histogram, plot_reliability_diagram
@@ -57,6 +57,7 @@ def train_temperature_scaling(model, val_loader, device, comet_logger, cfg):
 def train_model(device, comet_logger, cfg):
     ### Create the dataset and loaders ###
     root = cfg.data.data_path
+    label_file = cfg.data.label_path
 
     # Define the transformations to the images
     transform = transforms.Compose([
@@ -65,18 +66,20 @@ def train_model(device, comet_logger, cfg):
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    train_dataset = CustomDataset(root, train=True, transform=transform)
-    test_dataset = CustomDataset(root, train=False, transform=transform)
+    train_dataset = CustomDataset(root, label_file.format('train'), cfg.data.targets, transform=transform)
+    val_dataset = CustomDataset(root, label_file.format('val'), cfg.data.targets, transform=transform)
+    test_dataset = CustomDataset(root, label_file.format('test'), cfg.data.targets, transform=transform)
 
     batch_size = cfg.training.batch_size
     num_workers = cfg.training.num_workers
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
     
     ### Create and Load the pretrained Model ###
-    output_classes = len(train_dataset.classes) if not train_dataset.binary else 1
+    output_classes = len(train_dataset.class_weights) if not train_dataset.binary else 1
     model = torchvision.models.resnet50(weights=ResNet50_Weights.DEFAULT)
     model.fc = torch.nn.Linear(2048, output_classes) 
     if cfg.model.use_pretrained:
@@ -150,7 +153,7 @@ def train_model(device, comet_logger, cfg):
                                                                          num_classes=output_classes)
                 logger.info(f"Training Batch {i+1}/{len(train_loader)}: Current Batch Loss: {loss.item()}")
                 logger.info(f"Accuracy: {accuracy:.3f}, Precision: {precision:.3f}, Recall: {recall:.3f}, F1: {f1:.3f}, roc_auc: {auc:.3f}")
-                
+
         # After training all batches, calculate the metrics and log them
         accuracy, precision, recall, f1, auc = metric_evaluation(epoch_labels['train'], epoch_preds['train'],
                                                                          binary=train_dataset.binary,

@@ -13,4 +13,4 @@ module load Anaconda3
 module load CUDA/12.2.0
 module load Workspace_Home
 eval "$(conda shell.bash hook)"
-/storage/homefs/tf24s166/.conda/envs/performance_metrics/bin/python /storage/homefs/tf24s166/code/cifar10/train_template.py
+/storage/homefs/tf24s166/.conda/envs/performance_metrics/bin/python /storage/homefs/tf24s166/code/chestxpert/train_chestxpert.py

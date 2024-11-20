@@ -12,7 +12,7 @@ early_stopping:
 
 training:
   epochs: 10
-  batch_size: 32
+  batch_size: 128
   learning_rate: 0.001
   weight_decay: 0.0001
   num_workers: 8
@@ -23,12 +23,12 @@ calibration:
   num_bins: 15
 
 model:
-  use_pretrained: true
-  path_to_weights: '/storage/homefs/tf24s166/code/cifar10/outputs/2024-11-18/15-44-20/best_model.pth'
+  use_pretrained: false
+  path_to_weights: None
 
 data:
-  data_path: "/storage/homefs/tf24s166/code/cifar10/data"
-  label_path: TODO
-  target_column: target
+  data_path: "/storage/research/med_mlm/data/chexpertplus/chexpertplus/PNG/PNG/"
+  label_path: "/storage/homefs/tf24s166/code/susu_split/{}_susu_chexpertplus.csv"
+  targets: ['Cardiomegaly']
   features: TODO
 
