@@ -9,7 +9,7 @@ from utils.utils import expected_calibration_error
 from utils.log import comet_log_figure
 
 
-def plot_confidence_histogram(y_true, y_pred, save_path, cfg, step, logger, num_bins=10,):
+def plot_confidence_histogram(y_true, y_pred, save_path, cfg, step, logger, cal=False, num_bins=10,):
     # Calculate accuracy
     y_pred = np.array(y_pred)
     y_true = np.array(y_true)
@@ -30,9 +30,10 @@ def plot_confidence_histogram(y_true, y_pred, save_path, cfg, step, logger, num_
         plt.xlabel("Confidence")
         plt.ylabel("samples")
         plt.legend()
-        plt.savefig(f"{save_path}/confidence_histogram_{class_name}.png")
+        savepath = f"{save_path}/confidence_histogram_{class_name}" if not cal else f"{save_path}/confidence_histogram_{class_name}_calibrated"
+        plt.savefig(f'{savepath}.png')
 
-        comet_log_figure(logger, fig, f"Confidence histogram {class_name}", step, cfg)
+        comet_log_figure(logger, fig, savepath.split('/')[-1], step, cfg)
         plt.close(fig)
 
     if case == 'binary':
@@ -58,7 +59,7 @@ def plot_confidence_histogram(y_true, y_pred, save_path, cfg, step, logger, num_
             plot_binned_confidences(samp, accuracy, mean_confidence, class_name=cfg.data.targets[i])
 
 
-def plot_reliability_diagram(y_true, y_pred, save_path, cfg, step, logger, num_bins=10):
+def plot_reliability_diagram(y_true, y_pred, save_path, cfg, step, logger, cal=False, num_bins=10):
     # Calculate accuracy
     y_pred = np.array(y_pred)
     y_true = np.array(y_true)
@@ -103,8 +104,9 @@ def plot_reliability_diagram(y_true, y_pred, save_path, cfg, step, logger, num_b
         plt.xlabel("Confidence")
         plt.ylabel("Accuracy")
         plt.legend()
-        plt.savefig(f"{save_path}/reliability_diagram_{class_name}.png")
-        comet_log_figure(logger, fig, f"Reliability diagram {class_name}", step, cfg)
+        savepath= f"{save_path}/reliability_diagram_{class_name}" if not cal else f"{save_path}/reliability_diagram_{class_name}_calibrated"
+        plt.savefig(f'{savepath}.png')
+        comet_log_figure(logger, fig, savepath.split('/')[-1], step, cfg)
         plt.close(fig)
 
     if case == 'binary':
