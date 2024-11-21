@@ -4,27 +4,21 @@ logger = logging.getLogger(__name__)
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 
-def metric_evaluation(labels, pred, binary=True, num_classes=None):
-    # For AUC calculation
-    if binary:
-        # Binary AUC
-        if len(np.unique(labels)) < 2:
-            auc = np.nan  # Handle missing classes
-        else:
-            auc = roc_auc_score(labels, pred)
-        # Convert predictions to binary (0 or 1) for metrics
-        pred = [1 if i > 0.5 else 0 for i in pred]
-    else:
-        # Multiclass AUC: Check if all classes are represented
-        if len(np.unique(labels)) < num_classes:
-            auc = np.nan  # Handle missing classes
-        else:
-            # One-hot encode labels and predictions for AUC
-            labels_one_hot = np.eye(num_classes)[labels]
-            pred_one_hot = np.eye(num_classes)[np.argmax(pred, axis=1)]
-            auc = roc_auc_score(labels_one_hot, pred_one_hot, multi_class='ovr')
+def metric_evaluation(labels, pred, binary, multi_class):
+    pred = np.array(pred)
+    labels = np.array(labels)
 
-        # Convert predictions to class indices for metrics
+    # Calculate AUC
+    if any([len(np.unique(labels[:, i])) < 2 for i in range(labels.shape[1])]):
+        auc = None
+    elif multi_class:
+        auc = roc_auc_score(labels, pred, average='macro', multi_class='ovr')
+    else:
+        auc = roc_auc_score(labels, pred)
+    
+    if not multi_class:
+        pred = np.round(pred)
+    else:
         pred = np.argmax(pred, axis=1)
         
     # Accuracy
@@ -37,7 +31,7 @@ def metric_evaluation(labels, pred, binary=True, num_classes=None):
         recall = recall_score(labels, pred, zero_division=0)
         f1 = f1_score(labels, pred, zero_division=0)
     else:
-        # For multiclass, use macro-averaging (or adjust as needed)
+        # For multiclass and multilabel, use macro-averaging (or adjust as needed)
         precision = precision_score(labels, pred, average='macro', zero_division=0)
         recall = recall_score(labels, pred, average='macro', zero_division=0)
         f1 = f1_score(labels, pred, average='macro', zero_division=0)
@@ -47,31 +41,54 @@ def metric_evaluation(labels, pred, binary=True, num_classes=None):
 def expected_calibration_error(labels, y_pred, num_bins=10):
     y_pred = np.array(y_pred)
     labels = np.array(labels)
-    if len(y_pred.shape) == 1:
-        y_pred = y_pred.reshape(-1, 1)
-        labels = labels.reshape(-1, 1)
-    y_pred_class = np.argmax(y_pred, axis=1)
-    y_pred_confidence = np.max(y_pred, axis=1)
 
-    bins = np.linspace(0, 1, num_bins + 1) # Bin edges
-    bin_counts = np.zeros(num_bins) # Number of predictions in each bin
-    bin_correct = np.zeros(num_bins) # Number of correct predictions in each bin
-    bin_confidence = np.zeros(num_bins) # Mean confidence in each bin
+    if len(labels.shape) == 1 or labels.shape[1] == 1:
+        case = 'binary'
+    elif np.unique(labels)[0] > 2:
+        case = 'multi_class'
+    else:
+        case = 'multi_label'
 
-    for label, pred_conf, pred_class in zip(labels, y_pred_confidence, y_pred_class):
-        bin_idx = np.digitize(pred_conf, bins) - 1
-        if bin_idx >= num_bins: # Account for edge case
-            bin_idx = num_bins - 1
-        bin_counts[bin_idx] += 1
-        bin_confidence[bin_idx] += pred_conf
-        if pred_class == label:
-            bin_correct[bin_idx] += 1
+    def calc_ece(labels, y_pred_confidence, y_pred_class):
+            bins = np.linspace(0, 1, num_bins + 1) # Bin edges
+            bin_counts = np.zeros(num_bins) # Number of predictions in each bin
+            bin_correct = np.zeros(num_bins) # Number of correct predictions in each bin
+            bin_confidence = np.zeros(num_bins) # Mean confidence in each bin
 
-    bin_accuracy = np.nan_to_num(bin_correct / bin_counts)
-    bin_confidence = np.nan_to_num(bin_confidence / bin_counts)
+            for label, pred_conf, pred_class in zip(labels, y_pred_confidence, y_pred_class):
+                bin_idx = np.digitize(pred_conf, bins, right=True) - 1
+                if bin_idx >= num_bins: # Account for edge case
+                    bin_idx = num_bins - 1
+                bin_counts[bin_idx] += 1
+                bin_confidence[bin_idx] += pred_conf
+                if pred_class == label:
+                    bin_correct[bin_idx] += 1
 
-    ece = np.sum(bin_counts * np.abs(bin_accuracy - bin_confidence)) / len(labels)
-    return ece
+            bin_accuracy = np.nan_to_num(bin_correct / bin_counts)
+            bin_confidence = np.nan_to_num(bin_confidence / bin_counts)
+
+            ece = np.sum(bin_counts * np.abs(bin_accuracy - bin_confidence)) / len(labels)
+            return ece
+
+    if case == 'binary':
+        y_pred_class = np.round(y_pred)
+        y_pred_confidence = y_pred
+        return calc_ece(labels, y_pred_confidence, y_pred_class)
+    elif case == 'multi_class':
+        y_pred_class = np.argmax(y_pred, axis=1)
+        y_pred_confidence = np.max(y_pred, axis=1)
+        return calc_ece(labels, y_pred_confidence, y_pred_class)
+    elif case == 'multi_label':
+        ece_list = []
+        for i in range(y_pred.shape[1]):
+            y_pred_class = np.round(y_pred[:, i])
+            y_pred_confidence = y_pred[:, i]
+            ece_list.append(calc_ece(labels[:, i], y_pred_confidence, y_pred_class))
+        return np.mean(ece_list)
+
+
+
+   
 
 # **************** Early Stopping ***************** #
 class EarlyStopping:
