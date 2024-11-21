@@ -18,12 +18,40 @@ class CustomDataset(Dataset):
         self.label_data = pd.read_csv(csv_path)
         self.path_to_images = self.label_data['path_to_image'].values
         self.labels = self.label_data[targets].replace({-1:0}).fillna(0).values
-
+        
+        # Check if the dataset is binary or multiclass
         self.binary = len(self.targets) == 1
         
-        # Calculate weights for each class
-        self.class_counts = np.unique(self.labels, return_counts=True)[1]
-        self.class_weights = [max(self.class_counts) / cls for cls in self.class_counts]
+        # Calculate weights
+        if self.binary:
+            # Binary classification weights
+            positive_counts = self.labels.sum()  # Total positive labels
+            total_samples = len(self.labels)
+            self.class_weights = ([
+                total_samples / (2.0 * positive_counts)]
+                if positive_counts > 0
+                else [1.0]
+            )  # Handle division by zero
+        else:
+            # Multiclass classification weights
+            if self.labels.ndim == 1:  # Ensure labels are class indices
+                class_counts = np.bincount(self.labels)
+                self.class_weights = [
+                    max(class_counts) / cls if cls > 0 else 1.0
+                    for cls in class_counts
+                ]  # Handle division by zero
+            else:
+                # Multi-label classification weights
+                positive_counts = self.labels.sum(axis=0)  # Sum positives per class
+                total_samples = self.labels.shape[0]
+                self.class_weights = np.array(
+                    [
+                        total_samples / (2.0 * count) if count > 0 else 1.0
+                        for count in positive_counts
+                    ]
+                )  # Handle division by zero
+
+
 
     def __len__(self):
         # Return the size of the dataset
