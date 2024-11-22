@@ -17,7 +17,7 @@ def metric_evaluation(labels, pred):
 
     # Calculate AUC
     if any([len(np.unique(labels[:, i])) < 2 for i in range(labels.shape[1])]):
-        auc = None
+        auc = 0
     elif case == 'multi_class':
         auc = roc_auc_score(labels, pred, average='macro', multi_class='ovr')
     else:
