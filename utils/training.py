@@ -140,11 +140,11 @@ def train_model(device, comet_logger, cfg):
             epoch_preds['train'] += list(pred) 
             epoch_labels['train'] += list(labels)
             
-            if i % 2 == 0:
+            if i % 400 == 0:
                 accuracy, precision, recall, f1, auc = metric_evaluation(list(labels), list(pred),)
                 logger.info(f"Training Batch {i+1}/{len(train_loader)}: Current Batch Loss: {loss.item()}")
                 logger.info(f"Accuracy: {accuracy:.3f}, Precision: {precision:.3f}, Recall: {recall:.3f}, F1: {f1:.3f}, roc_auc: {auc:.3f}")
-                break
+
         # After training all batches, calculate the metrics and log them
         accuracy, precision, recall, f1, auc = metric_evaluation(epoch_labels['train'], epoch_preds['train'],)
         for metric_name, value in zip(metric_names, [accuracy, precision, recall, f1, auc]):
@@ -167,11 +167,11 @@ def train_model(device, comet_logger, cfg):
                 epoch_preds['test'] += list(pred) 
                 epoch_labels['test'] += list(labels)
                 
-                if i % 2 == 0:
+                if i % 400 == 0:
                     accuracy, precision, recall, f1, auc = metric_evaluation(list(labels), list(pred),)
                     logger.info(f"Testing Batch {i+1}/{len(train_loader)}: Current Batch Loss: {loss.item()}")
                     logger.info(f"Accuracy: {accuracy:.3f}, Precision: {precision:.3f}, Recall: {recall:.3f}, F1: {f1:.3f}, roc_auc: {auc:.3f}")
-                    break
+
         # After testing all batches, calculate the metrics and log them
         accuracy, precision, recall, f1, auc = metric_evaluation(epoch_labels['test'], epoch_preds['test'],)
         for metric_name, value in zip(metric_names, [accuracy, precision, recall, f1, auc]):
