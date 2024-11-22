@@ -4,19 +4,26 @@ logger = logging.getLogger(__name__)
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 
-def metric_evaluation(labels, pred, binary, multi_class):
+def metric_evaluation(labels, pred):
     pred = np.array(pred)
     labels = np.array(labels)
+    # Determine the case
+    if labels.shape[1] == 1:
+        case = 'binary'
+    elif np.unique(labels)[0] > 2:
+        case = 'multi_class'
+    else:
+        case = 'multi_label'
 
     # Calculate AUC
     if any([len(np.unique(labels[:, i])) < 2 for i in range(labels.shape[1])]):
         auc = None
-    elif multi_class:
+    elif case == 'multi_class':
         auc = roc_auc_score(labels, pred, average='macro', multi_class='ovr')
     else:
         auc = roc_auc_score(labels, pred)
-    
-    if not multi_class:
+
+    if case != 'multi_class':
         pred = np.round(pred)
     else:
         pred = np.argmax(pred, axis=1)
@@ -25,7 +32,7 @@ def metric_evaluation(labels, pred, binary, multi_class):
     accuracy = accuracy_score(labels, pred)
 
     # Precision, Recall, F1-Score
-    if binary:
+    if case == 'binary':
         # For binary classification, no averaging needed
         precision = precision_score(labels, pred, zero_division=0)
         recall = recall_score(labels, pred, zero_division=0)
