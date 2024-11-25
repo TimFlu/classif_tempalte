@@ -1,7 +1,7 @@
 import sys
 #TODO: Change the path to the working directory
 sys.path.append('/storage/homefs/tf24s166/code/chestxpert/') 
-from utils.datasets import CustomDataset
+from utils.datasets import CustomDataset, Cifar100, Cifar10
 from utils.log import comet_log_metrics, comet_log_figure
 from utils.plots import plot_confidence_histogram, plot_reliability_diagram
 from utils.utils import metric_evaluation, EarlyStopping, expected_calibration_error
@@ -65,15 +65,23 @@ def train_model(device, comet_logger, cfg):
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    train_dataset = CustomDataset(root, label_file.format('train'), cfg.data.targets, transform=transform)
-    val_dataset = CustomDataset(root, label_file.format('val'), cfg.data.targets, transform=transform)
-    test_dataset = CustomDataset(root, label_file.format('test'), cfg.data.targets, transform=transform)
+    # CIFAR10 dataset
+    train_dataset = Cifar10(root, train=True, transform=transform)
+    test_dataset = Cifar10(root, train=False, transform=transform)
+
+    # CIFAR100 dataset
+    # train_dataset = Cifar100(root, train=True, transform=transform)
+    # test_dataset = Cifar100(root, train=False, transform=transform)
+
+    # train_dataset = CustomDataset(root, label_file.format('train'), cfg.data.targets, transform=transform)
+    # val_dataset = CustomDataset(root, label_file.format('val'), cfg.data.targets, transform=transform)
+    # test_dataset = CustomDataset(root, label_file.format('test'), cfg.data.targets, transform=transform)
 
     batch_size = cfg.training.batch_size
     num_workers = cfg.training.num_workers
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
     
