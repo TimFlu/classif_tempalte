@@ -79,25 +79,25 @@ def train_model(device, comet_logger, cfg):
     
     ### Create and Load the pretrained Model ###
     output_classes = len(train_dataset.class_weights)
+    classification_case = train_dataset.case
     model = torchvision.models.resnet50(weights=ResNet50_Weights.DEFAULT)
     model.fc = torch.nn.Linear(2048, output_classes) 
     if cfg.model.use_pretrained:
         model.load_state_dict(torch.load(cfg.model.path_to_weights, weights_only=True))
     model.to(device)
-    # logger.info(f"Model: {model}")
 
     learning_rate = cfg.training.learning_rate
     weight_decay = cfg.training.weight_decay
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay, momentum=0.9)
     class_weights = torch.tensor(train_dataset.class_weights).to(device).float()
     logger.info(f"Class weights: {class_weights}")
-    
+
     if train_dataset.binary or train_dataset.labels.ndim != 1: # Binary- and multi-label classification
         loss_fun = torch.nn.BCEWithLogitsLoss(pos_weight=class_weights)
         activ_func = F.sigmoid
     else:
         loss_fun = torch.nn.CrossEntropyLoss(weight=class_weights) # Multi-class classification
-        activ_func = F.softmax #TODO might need to specify the dim
+        activ_func = lambda x: F.softmax(x, dim=1) #TODO might need to specify the dim
     logger.info(f'Using activation function: {activ_func.__name__}')
 
     ### Initialize Early Stopping ###
@@ -133,20 +133,21 @@ def train_model(device, comet_logger, cfg):
             loss.backward()
             optimizer.step()
             train_loss.append(loss.item())
-
+            
             # Calculate metrics
             labels = labels.cpu().numpy() if labels.is_cuda else labels.numpy()
             pred = activ_func(pred).detach().cpu().numpy()
-            epoch_preds['train'] += list(pred) 
-            epoch_labels['train'] += list(labels)
-            
+            epoch_preds['train'].append(pred) 
+            epoch_labels['train'].append(labels)
             if i % 400 == 0:
-                accuracy, precision, recall, f1, auc = metric_evaluation(list(labels), list(pred),)
+                accuracy, precision, recall, f1, auc = metric_evaluation(labels, pred, classification_case)
                 logger.info(f"Training Batch {i+1}/{len(train_loader)}: Current Batch Loss: {loss.item()}")
                 logger.info(f"Accuracy: {accuracy:.3f}, Precision: {precision:.3f}, Recall: {recall:.3f}, F1: {f1:.3f}, roc_auc: {auc:.3f}")
-
+                
         # After training all batches, calculate the metrics and log them
-        accuracy, precision, recall, f1, auc = metric_evaluation(epoch_labels['train'], epoch_preds['train'],)
+        epoch_preds['train'] = np.concatenate(epoch_preds['train'], axis=0)
+        epoch_labels['train'] = np.concatenate(epoch_labels['train'], axis=0)
+        accuracy, precision, recall, f1, auc = metric_evaluation(epoch_labels['train'], epoch_preds['train'], classification_case)
         for metric_name, value in zip(metric_names, [accuracy, precision, recall, f1, auc]):
             comet_log_metrics(comet_logger, {metric_name.format('train'): value}, epoch, cfg)    
 
@@ -164,29 +165,30 @@ def train_model(device, comet_logger, cfg):
                 # Calculate metrics
                 labels = labels.cpu().numpy() if labels.is_cuda else labels.numpy()
                 pred = activ_func(pred).detach().cpu().numpy()
-                epoch_preds['test'] += list(pred) 
-                epoch_labels['test'] += list(labels)
-                
-                if i % 400 == 0:
-                    accuracy, precision, recall, f1, auc = metric_evaluation(list(labels), list(pred),)
-                    logger.info(f"Testing Batch {i+1}/{len(train_loader)}: Current Batch Loss: {loss.item()}")
+                epoch_preds['test'].append(pred) 
+                epoch_labels['test'].append(labels)
+                if i % 200 == 0:
+                    accuracy, precision, recall, f1, auc = metric_evaluation(labels, pred, classification_case)
+                    logger.info(f"Testing Batch {i+1}/{len(test_loader)}: Current Batch Loss: {loss.item()}")
                     logger.info(f"Accuracy: {accuracy:.3f}, Precision: {precision:.3f}, Recall: {recall:.3f}, F1: {f1:.3f}, roc_auc: {auc:.3f}")
 
         # After testing all batches, calculate the metrics and log them
-        accuracy, precision, recall, f1, auc = metric_evaluation(epoch_labels['test'], epoch_preds['test'],)
+        epoch_preds['test'] = np.concatenate(epoch_preds['test'], axis=0)
+        epoch_labels['test'] = np.concatenate(epoch_labels['test'], axis=0)
+        accuracy, precision, recall, f1, auc = metric_evaluation(epoch_labels['test'], epoch_preds['test'], classification_case)
         for metric_name, value in zip(metric_names, [accuracy, precision, recall, f1, auc]):
             comet_log_metrics(comet_logger, {metric_name.format('test'): value}, epoch, cfg)
         
 
         ### After Test and Training evaluations ###
         plot_confidence_histogram(epoch_labels['test'], epoch_preds['test'], save_path=os.getcwd(),
-                                                  cfg=cfg, step=epoch, logger=comet_logger, num_bins=cfg.calibration.num_bins)
+                                                  cfg=cfg, step=epoch, logger=comet_logger, case=classification_case ,num_bins=cfg.calibration.num_bins)
         plot_reliability_diagram(epoch_labels['test'], epoch_preds['test'], save_path=os.getcwd(), 
-                                 cfg=cfg, step=epoch, logger=comet_logger, num_bins=cfg.calibration.num_bins)
+                                 cfg=cfg, step=epoch, logger=comet_logger, case=classification_case, num_bins=cfg.calibration.num_bins)
 
         comet_log_metrics(comet_logger, {"mean batch train_loss": np.mean(train_loss),
                     "mean batch test_loss": np.mean(test_loss)}, epoch, cfg)
-        comet_log_metrics(comet_logger, {"Expected Calibration Error": expected_calibration_error(epoch_labels['test'], epoch_preds['test'], num_bins=cfg.calibration.num_bins)}, 
+        comet_log_metrics(comet_logger, {"Expected Calibration Error": expected_calibration_error(epoch_labels['test'], epoch_preds['test'], classification_case, num_bins=cfg.calibration.num_bins)}, 
                           epoch, cfg)
 
 
@@ -216,13 +218,14 @@ def train_model(device, comet_logger, cfg):
     for images, labels in test_loader:
         inputs = images.to(device)
         calibrated_preds = calibration_model.predict(inputs)
-        calibrated_preds_list += list(activ_func(calibrated_preds).detach().cpu().numpy())
-
+        calibrated_preds_list.append(activ_func(calibrated_preds).detach().cpu().numpy())
+    
+    calibrated_preds_list = np.concatenate(calibrated_preds_list, axis=0)
     # Log calibration figures for calibrated and non calibrated outputs
     plot_confidence_histogram(epoch_test_labels, calibrated_preds_list, save_path=os.getcwd(),
-                              cfg=cfg, step=epoch, logger=comet_logger, cal=True, num_bins=cfg.calibration.num_bins)
+                              cfg=cfg, step=epoch, logger=comet_logger, case=classification_case, cal=True, num_bins=cfg.calibration.num_bins)
     plot_reliability_diagram(epoch_test_labels, calibrated_preds_list, save_path=os.getcwd(), 
-                             cfg=cfg, step=epoch, logger=comet_logger, cal=True, num_bins=cfg.calibration.num_bins)
+                             cfg=cfg, step=epoch, logger=comet_logger, case=classification_case, cal=True, num_bins=cfg.calibration.num_bins)
 
     # if cfg.model.use_pretrained:
     #     fig_conf_hist = plot_confidence_histogram(epoch_test_labels, preds_list, save_path=os.getcwd(), num_bins=cfg.calibration.num_bins)

@@ -9,17 +9,7 @@ from utils.utils import expected_calibration_error
 from utils.log import comet_log_figure
 
 
-def plot_confidence_histogram(y_true, y_pred, save_path, cfg, step, logger, cal=False, num_bins=10,):
-    # Calculate accuracy
-    y_pred = np.array(y_pred)
-    y_true = np.array(y_true)
-    
-    if len(y_true.shape) == 1 or y_true.shape[1] == 1:
-        case = 'binary'
-    elif len(np.unique(y_true)) > 2:
-        case = 'multi_class'
-    else:
-        case = 'multi_label'
+def plot_confidence_histogram(y_true, y_pred, save_path, cfg, step, logger, case, cal=False, num_bins=10,):
 
     def plot_binned_confidences(samples, accuracy, mean_confidence, class_name=None):    
         fig = plt.figure()
@@ -59,26 +49,16 @@ def plot_confidence_histogram(y_true, y_pred, save_path, cfg, step, logger, cal=
             plot_binned_confidences(samp, accuracy, mean_confidence, class_name=cfg.data.targets[i])
 
 
-def plot_reliability_diagram(y_true, y_pred, save_path, cfg, step, logger, cal=False, num_bins=10):
-    # Calculate accuracy
-    y_pred = np.array(y_pred)
-    y_true = np.array(y_true)
+def plot_reliability_diagram(y_true, y_pred, save_path, cfg, step, logger, case, cal=False, num_bins=10):
 
-    if y_true.shape[1] == 1:
-        case = 'binary'
-    elif np.unique(y_true)[0] > 2:
-        case = 'multi_class'
-    else:
-        case = 'multi_label'
-
-    def plot_figure(y_true, y_pred_confidence, y_pred_class, class_name=None):
+    def plot_figure(y_true_, y_pred_confidence, y_pred_class, class_name=None):
         bins = np.linspace(0, 1, num_bins + 1) # Bin edges
         bin_centers = (bins[:-1] + bins[1:]) / 2 # Bin centers
         bin_counts = np.zeros(num_bins) # Number of predictions in each bin
         bin_correct = np.zeros(num_bins) # Number of correct predictions in each bin
         bin_confidence = np.zeros(num_bins) # Mean confidence in each bin
 
-        for label, pred_conf, pred_class in zip(y_true, y_pred_confidence, y_pred_class):
+        for label, pred_conf, pred_class in zip(y_true_, y_pred_confidence, y_pred_class):
             bin_idx = np.digitize(pred_conf, bins, right=True) - 1
             if bin_idx >= num_bins: # Account for edge case
                 bin_idx = num_bins - 1
@@ -89,7 +69,7 @@ def plot_reliability_diagram(y_true, y_pred, save_path, cfg, step, logger, cal=F
 
         bin_accuracy = np.nan_to_num(bin_correct / bin_counts)
         bin_confidence = np.nan_to_num(bin_confidence / bin_counts)
-        ece = expected_calibration_error(y_true, y_pred_confidence, num_bins)
+        ece = expected_calibration_error(y_true, y_pred, case, num_bins)
 
         fig = plt.figure()
         plt.bar(bin_centers, bin_accuracy, width=1/num_bins, label='Accuracy', alpha=0.7)

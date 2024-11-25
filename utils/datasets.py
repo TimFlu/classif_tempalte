@@ -1,6 +1,8 @@
 import torch
 from torch.utils.data import Dataset
 import os
+import logging
+logger = logging.getLogger(__name__)
 import pandas as pd
 import numpy as np
 from PIL import Image
@@ -24,6 +26,8 @@ class CustomDataset(Dataset):
         
         # Calculate weights
         if self.binary:
+            logger.info('datasets.py: Binary classification detected')
+            self.case = 'binary'
             # Binary classification weights
             positive_counts = self.labels.sum()  # Total positive labels
             total_samples = len(self.labels)
@@ -35,6 +39,8 @@ class CustomDataset(Dataset):
         else:
             # Multiclass classification weights
             if self.labels.ndim == 1:  # Ensure labels are class indices
+                logger.info('datasets.py: Multiclass classification detected')
+                self.case = 'multi_class'
                 class_counts = np.bincount(self.labels)
                 self.class_weights = [
                     max(class_counts) / cls if cls > 0 else 1.0
@@ -42,6 +48,8 @@ class CustomDataset(Dataset):
                 ]  # Handle division by zero
             else:
                 # Multi-label classification weights
+                logger.info('datasets.py: Multi-label classification detected')
+                self.case = 'multi_label'
                 positive_counts = self.labels.sum(axis=0)  # Sum positives per class
                 total_samples = self.labels.shape[0]
                 self.class_weights = np.array(

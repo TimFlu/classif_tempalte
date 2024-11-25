@@ -4,30 +4,28 @@ logger = logging.getLogger(__name__)
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 
-def metric_evaluation(labels, pred):
-    pred = np.array(pred)
-    labels = np.array(labels)
-    # Determine the case
-    if labels.shape[1] == 1:
-        case = 'binary'
-    elif np.unique(labels)[0] > 2:
-        case = 'multi_class'
-    else:
-        case = 'multi_label'
-
-    # Calculate AUC
-    if any([len(np.unique(labels[:, i])) < 2 for i in range(labels.shape[1])]):
-        auc = 0
-    elif case == 'multi_class':
-        auc = roc_auc_score(labels, pred, average='macro', multi_class='ovr')
-    else:
-        auc = roc_auc_score(labels, pred)
-
-    if case != 'multi_class':
-        pred = np.round(pred)
-    else:
+def metric_evaluation(labels, pred, case):
+    if case == 'multi_class':
+        labels = np.eye(pred.shape[1])[labels]
+        if any([len(np.unique(labels[:, i])) < 2 for i in range(labels.shape[1])]):
+            auc = 0
+        else:
+            auc = roc_auc_score(labels, pred, average='macro', multi_class='ovr')
+        labels = np.argmax(labels, axis=1)
         pred = np.argmax(pred, axis=1)
-        
+    elif case == 'multi_label':
+        if any([len(np.unique(labels[:, i])) < 2 for i in range(labels.shape[1])]):
+            auc = 0
+        else:
+            auc = roc_auc_score(labels, pred, average='macro')
+        pred = np.round(pred)
+    elif case == 'binary':    
+        if len(np.unique(labels)) < 2:
+            auc = 0
+        else:
+            auc = roc_auc_score(labels, pred)
+        pred = np.round(pred)
+            
     # Accuracy
     accuracy = accuracy_score(labels, pred)
 
@@ -45,37 +43,28 @@ def metric_evaluation(labels, pred):
 
     return accuracy, precision, recall, f1, auc
 
-def expected_calibration_error(labels, y_pred, num_bins=10):
-    y_pred = np.array(y_pred)
-    labels = np.array(labels)
-
-    if len(labels.shape) == 1 or labels.shape[1] == 1:
-        case = 'binary'
-    elif np.unique(labels)[0] > 2:
-        case = 'multi_class'
-    else:
-        case = 'multi_label'
+def expected_calibration_error(labels, y_pred, case, num_bins=10):
 
     def calc_ece(labels, y_pred_confidence, y_pred_class):
-            bins = np.linspace(0, 1, num_bins + 1) # Bin edges
-            bin_counts = np.zeros(num_bins) # Number of predictions in each bin
-            bin_correct = np.zeros(num_bins) # Number of correct predictions in each bin
-            bin_confidence = np.zeros(num_bins) # Mean confidence in each bin
+        bins = np.linspace(0, 1, num_bins + 1) # Bin edges
+        bin_counts = np.zeros(num_bins) # Number of predictions in each bin
+        bin_correct = np.zeros(num_bins) # Number of correct predictions in each bin
+        bin_confidence = np.zeros(num_bins) # Mean confidence in each bin
 
-            for label, pred_conf, pred_class in zip(labels, y_pred_confidence, y_pred_class):
-                bin_idx = np.digitize(pred_conf, bins, right=True) - 1
-                if bin_idx >= num_bins: # Account for edge case
-                    bin_idx = num_bins - 1
-                bin_counts[bin_idx] += 1
-                bin_confidence[bin_idx] += pred_conf
-                if pred_class == label:
-                    bin_correct[bin_idx] += 1
+        for label, pred_conf, pred_class in zip(labels, y_pred_confidence, y_pred_class):
+            bin_idx = np.digitize(pred_conf, bins, right=True) - 1
+            if bin_idx >= num_bins: # Account for edge case
+                bin_idx = num_bins - 1
+            bin_counts[bin_idx] += 1
+            bin_confidence[bin_idx] += pred_conf
+            if pred_class == label:
+                bin_correct[bin_idx] += 1
 
-            bin_accuracy = np.nan_to_num(bin_correct / bin_counts)
-            bin_confidence = np.nan_to_num(bin_confidence / bin_counts)
+        bin_accuracy = np.nan_to_num(bin_correct / bin_counts)
+        bin_confidence = np.nan_to_num(bin_confidence / bin_counts)
 
-            ece = np.sum(bin_counts * np.abs(bin_accuracy - bin_confidence)) / len(labels)
-            return ece
+        ece = np.sum(bin_counts * np.abs(bin_accuracy - bin_confidence)) / len(labels)
+        return ece
 
     if case == 'binary':
         y_pred_class = np.round(y_pred)
