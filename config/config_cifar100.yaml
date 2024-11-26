@@ -29,6 +29,6 @@ model:
 data:
   data_path: "/storage/homefs/tf24s166/code/cifar10/data"
   label_path: TODO
-  target_column: target
+  targets: target
   features: TODO
 

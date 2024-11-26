@@ -11,7 +11,7 @@ early_stopping:
   min_delta: 0.001
 
 training:
-  epochs: 5
+  epochs: 20
   batch_size: 32
   learning_rate: 0.001
   weight_decay: 0.0001
@@ -29,6 +29,6 @@ model:
 data:
   data_path: "/storage/homefs/tf24s166/code/cifar10/data"
   label_path: TODO
-  target_column: target
+  targets: target
   features: TODO
 
