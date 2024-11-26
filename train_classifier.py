@@ -9,7 +9,7 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
 
 # TODO: Config name
-@hydra.main(config_path="config", config_name="multilabel_temp")
+@hydra.main(version_base=None, config_path="config", config_name="multilabel_temp")
 def main(cfg):
     # Setup comet logger
     if cfg.comet_logger.initialize:
