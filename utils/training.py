@@ -1,6 +1,6 @@
 import sys
 #TODO: Change the path to the working directory
-sys.path.append('/storage/homefs/tf24s166/code/chestxpert/') 
+sys.path.append('/storage/homefs/tf24s166/code/classif_template/') 
 from utils.datasets import CustomDataset, Cifar100, Cifar10, Cifar100Binary
 from utils.log import comet_log_metrics, comet_log_figure
 from utils.plots import plot_confidence_histogram, plot_reliability_diagram
@@ -70,12 +70,12 @@ def train_model(device, comet_logger, cfg):
     # test_dataset = Cifar10(root, train=False, transform=transform)
 
     # CIFAR100 dataset
-    # train_dataset = Cifar100(root, train=True, transform=transform)
-    # test_dataset = Cifar100(root, train=False, transform=transform)
+    train_dataset = Cifar100(root, train=True, transform=transform)
+    test_dataset = Cifar100(root, train=False, transform=transform)
 
     # CIFAR100 binary dataset
-    train_dataset = Cifar100Binary(root, train=True, transform=transform)
-    test_dataset = Cifar100Binary(root, train=False, transform=transform)
+    # train_dataset = Cifar100Binary(root, train=True, transform=transform)
+    # test_dataset = Cifar100Binary(root, train=False, transform=transform)
 
     # train_dataset = CustomDataset(root, label_file.format('train'), cfg.data.targets, transform=transform)
     # val_dataset = CustomDataset(root, label_file.format('val'), cfg.data.targets, transform=transform)

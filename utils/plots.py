@@ -1,6 +1,6 @@
 import sys
 #TODO: Change the path to the working directory
-sys.path.append('/storage/homefs/tf24s166/code/chestxpert/') 
+sys.path.append('/storage/homefs/tf24s166/code/classif_template/') 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
