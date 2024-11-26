@@ -65,26 +65,27 @@ def train_model(device, comet_logger, cfg):
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    # CIFAR10 dataset
-    # train_dataset = Cifar10(root, train=True, transform=transform)
-    # test_dataset = Cifar10(root, train=False, transform=transform)
-
-    # CIFAR100 dataset
-    # train_dataset = Cifar100(root, train=True, transform=transform)
-    # test_dataset = Cifar100(root, train=False, transform=transform)
-
-    # CIFAR100 binary dataset
-    # train_dataset = Cifar100Binary(root, train=True, transform=transform)
-    # test_dataset = Cifar100Binary(root, train=False, transform=transform)
-
-    # Multilabel dataset
-    train_dataset = MultiLabelDataset(root=root, year="2007", image_set="train", transform=transform)
-    test_dataset = MultiLabelDataset(root=root, year="2007", image_set="test", transform=transform)
-
-    # Chestxpert dataset
-    # train_dataset = CustomDataset(root, label_file.format('train'), cfg.data.targets, transform=transform)
-    # val_dataset = CustomDataset(root, label_file.format('val'), cfg.data.targets, transform=transform)
-    # test_dataset = CustomDataset(root, label_file.format('test'), cfg.data.targets, transform=transform)
+    if cfg.data.classif_type == 'multiclass10':
+        # CIFAR10 dataset
+        train_dataset = Cifar10(root, train=True, transform=transform)
+        test_dataset = Cifar10(root, train=False, transform=transform)
+    elif cfg.data.classif_type == 'multiclass100':
+        # CIFAR100 dataset
+        train_dataset = Cifar100(root, train=True, transform=transform)
+        test_dataset = Cifar100(root, train=False, transform=transform)
+    elif cfg.data.classif_type == 'binary':
+        # CIFAR100 binary dataset
+        train_dataset = Cifar100Binary(root, train=True, transform=transform)
+        test_dataset = Cifar100Binary(root, train=False, transform=transform)
+    elif cfg.data.classif_type == 'multilabel':
+        # Multilabel dataset
+        train_dataset = MultiLabelDataset(root=root, year="2007", image_set="train", transform=transform)
+        test_dataset = MultiLabelDataset(root=root, year="2007", image_set="test", transform=transform)
+    else:
+        # Chestxpert dataset
+        train_dataset = CustomDataset(root, label_file.format('train'), cfg.data.targets, transform=transform)
+        # val_dataset = CustomDataset(root, label_file.format('val'), cfg.data.targets, transform=transform)
+        test_dataset = CustomDataset(root, label_file.format('test'), cfg.data.targets, transform=transform)
 
     batch_size = cfg.training.batch_size
     num_workers = cfg.training.num_workers

@@ -31,4 +31,4 @@ data:
   label_path: "/storage/homefs/tf24s166/code/susu_split/{}_susu_chexpertplus.csv"
   targets: ['Cardiomegaly','Edema', 'Consolidation', 'Pneumonia']
   features: TODO
-
+  classif_type: chestxpert

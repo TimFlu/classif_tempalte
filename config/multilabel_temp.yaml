@@ -27,11 +27,11 @@ model:
   path_to_weights: None
 
 data:
-  data_path: "/storage/research/med_mlm/data/chexpertplus/chexpertplus/PNG/PNG/"
-  label_path: "/storage/homefs/tf24s166/code/susu_split/{}_susu_chexpertplus.csv"
+  data_path: "/storage/homefs/tf24s166/code/classif_template/data"
+  label_path: None
   targets: ["aeroplane", "bicycle", "bird", "boat", "bottle",
             "bus", "car", "cat", "chair", "cow",
             "diningtable", "dog", "horse", "motorbike", "person",
             "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
   features: TODO
-
+  classif_type: multilabel

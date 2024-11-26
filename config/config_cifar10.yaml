@@ -27,8 +27,8 @@ model:
   path_to_weights: '/storage/homefs/tf24s166/code/cifar10/outputs/2024-11-18/15-44-20/best_model.pth'
 
 data:
-  data_path: "/storage/homefs/tf24s166/code/cifar10/data"
+  data_path: "/storage/homefs/tf24s166/code/classif_template/data"
   label_path: TODO
   targets: target
   features: TODO
-
+  classif_type: multiclass10
